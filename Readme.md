@@ -27,10 +27,10 @@ docker network create -d bridge --subnet 192.168.0.0/24 --gateway 192.168.0.1 db
 Start the Docker container providing the postgres database
 
 ```bash
-docker run --name postgres-db --net=dbnet -p 5432:5432 -e POSTGRES_DB=bank_db -e POSTGRES_USER=bank_user -e POSTGRES_PASSWORD=bank_pw -d postgres
+docker run --name postgres-db --net=dbnet -p 5432:5432 -e POSTGRES_DB=bank_db -e POSTGRES_USER=bank_user -e POSTGRES_PASSWORD=bank_pw -d postgres:11.3
 
 # test connection with psql client using another Docker container
-docker run -it --net=dbnet --rm postgres psql -h 192.168.0.1 -U bank_user -d bank_db
+docker run -it --net=dbnet --rm postgres:11.3 psql -h 192.168.0.1 -U bank_user -d bank_db
 ```
 
 Start a Docker container using I4DS's datascience notebook
@@ -58,7 +58,7 @@ Extract the database (in order to share it with students)
 
 ```bash
 rm -f ${JUPYTER_FILES}/dbdump.sqlc
-docker run -it --net=dbnet -v "${JUPYTER_FILES}":/dump --rm postgres pg_dump --format=c --file=/dump/dbdump.sqlc -h 192.168.0.1 -U bank_user -d bank_db
+docker run -it --net=dbnet -v "${JUPYTER_FILES}":/dump --rm postgres:11.3 pg_dump --format=c --file=/dump/dbdump.sqlc -h 192.168.0.1 -U bank_user -d bank_db
 ```
 
 Copy the extracted database to the corresponding git repository where it will be made public to the students
