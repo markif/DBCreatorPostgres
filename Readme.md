@@ -2,7 +2,7 @@
 
 See https://docs.docker.com/install
 
-# Setup Database
+# Create a Database Dump
 
 Following steps setup a Postgres database and use I4DS's datascience notebook to create tables and add data.
 
@@ -27,21 +27,31 @@ docker network create -d bridge --subnet 192.168.0.0/24 --gateway 192.168.0.1 db
 Start the Docker container providing the postgres database
 
 ```bash
-docker run --name postgres-db --net=dbnet -p 5432:5432 -e POSTGRES_DB=bank_db -e POSTGRES_USER=bank_user -e POSTGRES_PASSWORD=bank_pw -d postgres:11.3
+DATABASE="bank_db"
+docker run --name postgres-db --net=dbnet -p 5432:5432 -e POSTGRES_USER=db_admin -e POSTGRES_PASSWORD=db_admin_0815_pw -d postgres:11.3
 
 # test connection with psql client using another Docker container
-docker run -it --net=dbnet --rm postgres:11.3 psql -h 192.168.0.1 -U bank_user -d bank_db
+docker run -it --net=dbnet --rm postgres:11.3 psql -h 192.168.0.1 -U db_admin -d ${DATABASE}
 ```
 
 Start a Docker container using I4DS's datascience notebook
 ```bash
+# set the project name
+PROJECT_NAME="2019_HS_Challenge_ExplorativeAnalysis"
 # set the path to Import_Data.ipynb
-JUPYTER_FILES=$(pwd)/ExplorativeAnalysisChallenge_HS2019/
+JUPYTER_FILES=$(pwd)/${PROJECT_NAME}
+
+# change rights and copy template file (only if necessary)
+chmod -R 777 ${JUPYTER_FILES}
+cp Import_Data.ipynb ${JUPYTER_FILES}
+
 # start Jupyter Notebook with disabled authentication (not a recommended practice)
 docker run --name datascience-notebook --net=dbnet -p 8888:8888 -v "${JUPYTER_FILES}":/home/jovyan/work -d i4ds/datascience-notebook start-notebook.sh --NotebookApp.token=''
 ```
 
-Execute Import_Data.ipynb Notebook to load the data.
+Copy the data.zip (with the *.csv files containing the data of the tables) to ${JUPYTER_FILES}
+
+Execute Import_Data.ipynb Notebook to load the data (you will need to adapt the settings).
 
 ```bash
 firefox http://127.0.0.1:8888/notebooks/work/Import_Data.ipynb
@@ -54,12 +64,44 @@ docker exec -it datascience-notebook start.sh
 jupyter nbconvert --ExecutePreprocessor.timeout=360 --to notebook --execute ~/work/Import_Data.ipynb
 ```
 
-Extract the database (in order to share it with students)
+Extract the database and users (e.g. to share it with students)
 
 ```bash
-rm -f ${JUPYTER_FILES}/dbdump.sqlc
-docker run -it --net=dbnet -v "${JUPYTER_FILES}":/dump --rm postgres:11.3 pg_dump --format=c --file=/dump/dbdump.sqlc -h 192.168.0.1 -U bank_user -d bank_db
+# prepare folder structure and files
+EXPORT_FOLDER=${JUPYTER_FILES}"/export"
+mkdir -p ${EXPORT_FOLDER}
+docker run -it --net=dbnet -v "${JUPYTER_FILES}":/dump --rm postgres:11.3 pg_dump --format=c --file=/dump/export/dbdump.sqlc -h 192.168.0.1 -U db_admin -d ${DATABASE}
+docker run -it --net=dbnet -v "${JUPYTER_FILES}":/dump --rm postgres:11.3 pg_dumpall -h 192.168.0.1 -U db_admin -g -f "/dump/export/users.sql"
+pushd $(pwd) && cd ${JUPYTER_FILES} && tar cfvz export.tar.gz export && popd
+rm -rf ${EXPORT_FOLDER}
 ```
+
+# Import Dump to Database
+
+Download the export.tar.gz file containing the database dump to import.
+
+```bash
+# make sure the database is running (here we use a docker container)
+docker run --name explorative-analysis-db --net=dbnet -p 5432:5432 -e POSTGRES_USER=db_admin -e POSTGRES_PASSWORD=db_admin_0815_pw -e POSTGRES_DB=${DATABASE} -d postgres:11.3
+# connect to the database server and make sure export.tar.gz is available
+docker run -it --net=dbnet -v "$(pwd)":/dump --rm postgres:11.3 /bin/bash
+
+# extract the dump
+tar -xvzf export.tar.gz
+DATABASE="bank_db"
+# restore user/role
+psql -h 192.168.0.1 -U db_admin -d ${DATABASE} -f export/users.sql
+# restore the data - the password is bank_pw (see above)
+pg_restore -h 192.168.0.1 -U db_admin -d ${DATABASE} --format=c export/dbdump.sqlc
+# cleanup
+rm -rf export && rm -f export.tar.gz
+
+# test if the data is available
+psql -h 192.168.0.1 -U bank_user -d ${DATABASE}
+SELECT COUNT(*) FROM trans;
+exit
+```
+
 
 Copy the extracted database to the corresponding git repository where it will be made public to the students
 
