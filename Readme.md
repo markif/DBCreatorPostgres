@@ -88,7 +88,7 @@ docker run -it --net=dbnet -v "$(pwd)":/dump --rm postgres:11.3 /bin/bash
 
 # extract the dump
 tar -xvzf export.tar.gz
-DATABASE="bank_db"
+DATABASE="bank_db" # or "warenkorb_db"
 # restore user/role
 psql -h 192.168.0.1 -U db_admin -d ${DATABASE} -f export/users.sql
 # restore the data - the password is bank_pw (see above)
@@ -97,17 +97,56 @@ pg_restore -h 192.168.0.1 -U db_admin -d ${DATABASE} --format=c export/dbdump.sq
 rm -rf export && rm -f export.tar.gz
 
 # test if the data is available
-psql -h 192.168.0.1 -U bank_user -d ${DATABASE}
+psql -h 192.168.0.1 -U db_user -d ${DATABASE}
 SELECT COUNT(*) FROM trans;
 exit
 ```
 
 
-Copy the extracted database to the corresponding git repository where it will be made public to the students
+# On a Database Server
+
+## Install Postgres
 
 ```bash
-cp ${JUPYTER_FILES}/dbdump.sqlc ../$(basename ${JUPYTER_FILES})
+# install postgres
+sudo apt install postgresql postgresql-contrib
+
+# create db_admin user
+sudo su - postgres
+# replace "peer" with "md5" for "local   all             all"
+# and add "host  all  all 0.0.0.0/0 md5"
+nano /etc/postgresql/10/main/pg_hba.conf 
+# add listen_addresses = '*'
+nano nano /etc/postgresql/10/main/postgresql.conf
+
+# restart postgres
+sudo service postgresql restart
+# create db_admin user
+createuser -sPE db_admin
+createdb db_admin
+# check if login works
+psql -U db_admin
 ```
 
+## Import Data
 
+```bash
+# copy dump to database server
+scp -i switch-cloud.key 2019_HS_Challenge_ExplorativeAnalysis/export.tar.gz ubuntu@86.119.36.94:~/downloads
+# login
+ssh -i switch-cloud.key ubuntu@86.119.36.94
+cd downloads
+
+# extract the dump
+tar -xvzf export.tar.gz
+DATABASE="bank_db" # or "warenkorb_db"
+createdb -U db_admin ${DATABASE}
+createdb -U db_admin db_user
+# restore user/role
+psql -U db_admin -d ${DATABASE} -f export/users.sql
+# restore the data - the password is bank_pw (see above)
+pg_restore -U db_admin -d ${DATABASE} --format=c export/dbdump.sqlc
+# cleanup
+rm -rf export && rm -f export.tar.gz
+```
 
