@@ -1,4 +1,9 @@
-You can use Docker to run Jupyter Notebooks in case you do not want to install Jupyter on your computer. 
+There are several options to install Jupyter Notebook. 
+
+One option is to install Anaconda which comes with Jupyter Notebook (please follow [this](
+https://jupyter.readthedocs.io/en/latest/install.html#id3) procedure). The downside of this option is that you have to manage the necessary dependencies (e.g. postgresql drivers) yourself.
+
+Alternatively, you can use Docker to run Jupyter Notebooks (the Docker Image brings alonge the necessary dependencies). 
 
 # Install Docker
 
