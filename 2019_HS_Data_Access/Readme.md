@@ -1,3 +1,5 @@
+# Install Jupyter Notebook
+
 There are several options to install Jupyter Notebook. 
 
 One option is to install Anaconda which comes with Jupyter Notebook (please follow [this](
@@ -5,11 +7,11 @@ https://jupyter.readthedocs.io/en/latest/install.html#id3) procedure). The downs
 
 Alternatively, you can use Docker to run Jupyter Notebooks (the Docker Image brings alonge the necessary dependencies). 
 
-# Install Docker
+## Install Docker
 
 See https://docs.docker.com/install
 
-# Run Jupyter Notebook
+## Run Jupyter Notebook
 
 Run the Jupyter Notebook with disabled authentication (not a recommended practice) as a background process.
 
